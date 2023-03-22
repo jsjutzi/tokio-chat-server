@@ -8,3 +8,4 @@ authors = ["Jack Jutzi"]
 
 [dependencies]
 tokio = { version = "1", features = ["full"]}
+futures="0.3"
