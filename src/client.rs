@@ -1,13 +1,13 @@
-use futures::select;
-use futures::FutureExt;
+use colored::*;
 use std::io;
 use std::process::exit;
+use ansi_escapes;
 
 use tokio::{
     io::{stdin, AsyncBufReadExt, AsyncWriteExt, BufReader},
     net::{TcpStream, ToSocketAddrs},
     runtime::Runtime,
-    task,
+    time::{sleep, Duration}
 };
 
 type Result<T> = std::result::Result<T, Box<dyn std::error::Error + Send + Sync>>;
@@ -54,7 +54,13 @@ async fn try_main(addr: impl ToSocketAddrs) -> Result<()> {
         password: password,
     };
 
-    println!("Logged in as : {}", user.username);
+    println!("User Authenticated - Logging in as: {} ...", user.username);
+
+    sleep(Duration::from_secs(2)).await;
+    
+    // Clear all of terminal output - cross-platform
+    println!("{esc}[2J{esc}[1;1H", esc = 27 as char);
+    println!("***************** New Session *****************");
 
     let mut stream = TcpStream::connect(addr).await?;
     let (read, mut writer) = stream.split();
@@ -70,23 +76,30 @@ async fn try_main(addr: impl ToSocketAddrs) -> Result<()> {
         tokio::select! {
             line = lines_from_server.next_line() => match line {
                 Ok(Some(line)) => {
-                    println!("{}", line);
+                    println!("{}", line.bright_blue().bold());
                 },
                 Ok(None) => break,
                 Err(_) => break
             },
             line = lines_from_stdin.next_line() => match line {
                 Ok(Some(line)) => {
-                    let mut formatted_message = String::from(user.username.clone());
-                    formatted_message.push_str(": ");
-                    formatted_message.push_str(&line);
+                    // Send message to server
+                    let mut formatted_message_server = String::from(user.username.clone());
+                    formatted_message_server.push_str(": ");
+                    formatted_message_server.push_str(&line);
 
-                    writer.write_all(formatted_message.as_bytes()).await?;
+                    // Log message in own terminal
+                    let mut formatted_message_self = String::from("You: ");
+                    formatted_message_self.push_str(&line);
+
+                    print!("{}", ansi_escapes::EraseLines(2));
+                    println!("{}", formatted_message_self.green());
+
+                    writer.write_all(formatted_message_server.as_bytes()).await?;
                     writer.write_all(b"\n").await?;
                 }
                 Ok(None) => break,
                 Err(_) => break
-
             }
         }
     }

@@ -18,8 +18,7 @@ async fn accept_loop(addr: impl ToSocketAddrs) {
 
     loop {
         let (mut socket, addr) = listener.accept().await.unwrap();
-
-        println!("Accepting from: {:?}", socket.peer_addr().unwrap());
+        println!("Accepting from: {}", socket.peer_addr().unwrap());
 
         let tx = tx.clone();
         let mut rx = tx.subscribe();
