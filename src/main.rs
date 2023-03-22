@@ -1,47 +1,13 @@
-use tokio::{
-    io::{AsyncBufReadExt, AsyncWriteExt, BufReader},
-    net::TcpListener, 
-    sync::broadcast,
-};
+mod client;
+mod server;
 
-#[tokio::main]
-async fn main() {
-    let listener = TcpListener::bind("localhost:8080").await.unwrap();
-    let (tx,  _rx) = broadcast::channel(10);
+type Result<T> = std::result::Result<T, Box<dyn std::error::Error + Send + Sync>>;
 
-    loop {
-        let (mut socket, addr) = listener.accept().await.unwrap();
-        let tx = tx.clone();
-        let mut rx = tx.subscribe();
-
-        tokio::spawn( async move {
-        // Split read & write
-            let (read, mut writer) = socket.split();
-
-            let mut reader = BufReader::new(read);
-            let mut line = String::new();
-
-            loop {
-                tokio::select! {
-                    result = reader.read_line(&mut line) => {
-                        if result.unwrap() == 0 {
-                            break;
-                        }
-                        
-                        tx.send((line.clone(), addr)).unwrap();
-                        line.clear()
-                    }
-
-                    result = rx.recv() => {
-                        let (msg, other_addr) = result.unwrap();
-                        
-                        if addr != other_addr {
-                            // Writes an entire buffer to the ouput
-                            writer.write_all(msg.as_bytes()).await.unwrap();
-                        }
-                    }
-                }
-            }
-        });
+fn main() -> Result<()> {
+    let mut args = std::env::args();
+    match (args.nth(1).as_ref().map(String::as_str), args.next()) {
+        (Some("client"), None) => client::main(),
+        (Some("server"), None) => server::main(),
+        _ => Err("Usage: a-chat [client|server]".into()),
     }
 }
