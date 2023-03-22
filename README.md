@@ -23,7 +23,7 @@ cargo run client
 To send a message, just type and hit the Enter key. This chat server operates on a shared broadcast. You should see on receiving terminals format of
 
 ```bash
-[your_username]: [message]
+[sender_username]: [message]
 ```
 
 On your sending terminal you will see your own messages in the format of:
